@@ -1,6 +1,7 @@
 (ns greed.core
   (:require [net.cgrand.enlive-html :as html]
-            [clojure.string :as str]))
+            [clojure.string :as str])
+  (:gen-class))
 
 (def ^:dynamic *base-url* "http://www.mrporter.com")
 
@@ -52,3 +53,6 @@
 (defn print-all []
   (doseq [product (map extract (products))]
     (print-product product)))
+
+(defn -main [& args]
+    (print-all))
