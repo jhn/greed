@@ -50,9 +50,12 @@
   (println "\t" (product :percent "No percent"))
   (println "\t" (product :url "No url")))
 
-(defn print-all []
+(defn print-products []
   (doseq [product (map extract (products))]
     (print-product product)))
 
+(defn schedule [f ms]
+    (future (while true (do (Thread/sleep ms) (f)))))
+
 (defn -main [& args]
-    (print-all))
+  (schedule print-products (* 1000 60 10)))
