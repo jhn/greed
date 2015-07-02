@@ -1,11 +1,13 @@
 (ns greed.core
   (:require [net.cgrand.enlive-html :as html]
-            [clojure.string :as str])
-  (:gen-class))
+            [clojure.string :as str]
+            [clojure.set :as set]))
 
 (def ^:dynamic *base-url* "http://www.mrporter.com")
 
 (def ^:dynamic *common-projects-sale* "/mens/sale/designers/common_projects/all/")
+
+(def ^:dynamic *common-projects* "/mens/shoes/sneakers/low_top_sneakers?designerFilter=Common_Projects")
 
 (def ^:dynamic *selectors*
   {:products  [:div#product-list :div.description]
@@ -20,7 +22,7 @@
   (html/html-resource (java.net.URL. url)))
 
 (defn split-on-space [word]
-  (clojure.string/split word #"\s+"))
+  (str/split word #"\s+"))
 
 (defn squish [line]
   (str/triml (str/join " "
@@ -38,9 +40,6 @@
                  (str *base-url* (:href (:attrs url))))]
     (zipmap [:url :designer :title :pre-sale :post-sale :percent] (map squish result))))
 
-(defn products []
-  (html/select (fetch-url (str *base-url* *common-projects-sale*)) (:products *selectors*)))
-
 (defn print-product [product]
   (println)
   (println (product :designer "No designer"))
@@ -50,12 +49,28 @@
   (println "\t" (product :percent "No percent"))
   (println "\t" (product :url "No url")))
 
-(defn print-products []
-  (doseq [product (map extract (products))]
+(defn print-products [products]
+  (doseq [product products]
     (print-product product)))
 
+(def last-products (atom #{}))
+
+(defn products []
+  (html/select (fetch-url (str *base-url* *common-projects*)) (:products *selectors*)))
+
+(defn go []
+  (let [new-products (set (map extract (products)))
+        diff (set/difference new-products @last-products)]
+    (when-not (empty? diff)
+      (print-products diff)
+      (println (apply str (repeat 30 "*")))
+      (reset! last-products new-products))))
+
 (defn schedule [f ms]
-    (future (while true (do (Thread/sleep ms) (f)))))
+  (future (while true (do (f) (Thread/sleep ms)))))
+
+(defn minutes-to-ms [m]
+  (* 1000 60 m))
 
 (defn -main [& args]
-  (schedule print-products (* 1000 60 10)))
+  (schedule go (minutes-to-ms 10)))
