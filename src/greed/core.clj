@@ -1,7 +1,8 @@
 (ns greed.core
   (:require [net.cgrand.enlive-html :as html]
             [clojure.string :as str]
-            [clojure.set :as set]))
+            [clojure.set :as set])
+  (:gen-class))
 
 (def ^:dynamic *base-url* "http://www.mrporter.com")
 
