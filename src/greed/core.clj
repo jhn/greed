@@ -1,6 +1,6 @@
 (ns greed.core
   (:require [net.cgrand.enlive-html :as html]
-            [clojure.string :as str]
+            [clojure.string :as string]
             [clojure.set :as set])
   (:gen-class))
 
@@ -22,12 +22,12 @@
 (defn fetch-url [url]
   (html/html-resource (java.net.URL. url)))
 
-(defn split-on-space [word]
-  (str/split word #"\s+"))
-
 (defn squish [line]
-  (str/triml (str/join " "
-     (split-on-space (str/replace line #"\n" " ")))))
+  (as-> line l
+        (string/replace l #"\n" " ")
+        (string/split l #"\s+")
+        (string/join " " l)
+        (string/triml l)))
 
 (defn extract [node]
   (let [designer  (first (html/select [node] (:designer  *selectors*)))
@@ -57,21 +57,22 @@
 (def last-products (atom #{}))
 
 (defn products []
-  (html/select (fetch-url (str *base-url* *common-projects*)) (:products *selectors*)))
+  (html/select (fetch-url (str *base-url* *common-projects*))
+               (:products *selectors*)))
 
 (defn go []
-  (let [new-products (set (map extract (products)))
-        diff (set/difference new-products @last-products)]
-    (when-not (empty? diff)
-      (print-products diff)
-      (println (apply str (repeat 30 "*")))
-      (reset! last-products new-products))))
+  (when-let [new-products (set (map extract (products)))]
+    (when-let [diff (set/difference new-products @last-products)]
+      (when-not (empty? diff)
+        (print-products diff)
+        (println (apply str (repeat 30 "*")))
+        (reset! last-products new-products)))))
 
 (defn schedule [f ms]
   (future (while true (do (f) (Thread/sleep ms)))))
 
-(defn minutes-to-ms [m]
+(defn minutes->ms [m]
   (* 1000 60 m))
 
 (defn -main [& args]
-  (schedule go (minutes-to-ms 10)))
+  (schedule go (minutes->ms 10)))
