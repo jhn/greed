@@ -19,6 +19,8 @@
    :percent   [[:p.sale-price (html/nth-child 3)]]
    :url       [:div.designer :a]})
 
+(def ^:dynamic *max-price* 200)
+
 (defn fetch-url [url]
   (html/html-resource (java.net.URL. url)))
 
@@ -29,6 +31,12 @@
         (string/join " " l)
         (string/triml l)))
 
+(defn str->double [s]
+   (try (Double/parseDouble s) (catch Exception _ 0.0)))
+
+(defn update-vals [map vals f]
+  (reduce #(update-in % [%2] f) map vals))
+
 (defn extract [node]
   (let [designer  (first (html/select [node] (:designer  *selectors*)))
         title     (first (html/select [node] (:title     *selectors*)))
@@ -36,10 +44,10 @@
         post-sale (first (html/select [node] (:post-sale *selectors*)))
         percent   (first (html/select [node] (:percent   *selectors*)))
         url       (first (html/select [node] (:url       *selectors*)))
-        result (conj
-                 (map html/text [designer title pre-sale post-sale percent])
-                 (str *base-url* (:href (:attrs url))))]
-    (zipmap [:url :designer :title :pre-sale :post-sale :percent] (map squish result))))
+        values    (conj (map html/text [designer title pre-sale post-sale percent])
+                        (str *base-url* (:href (:attrs url))))
+        str-map (zipmap [:url :designer :title :pre-sale :post-sale :percent] (map squish values))]
+    (update-vals str-map [:pre-sale :post-sale :percent] str->double)))
 
 (defn print-product [product]
   (println)
@@ -60,12 +68,20 @@
   (html/select (fetch-url (str *base-url* *common-projects*))
                (:products *selectors*)))
 
+(defn go-crazy [products]
+  (println "PARTY LIKE IT'S 1999 SON")
+  (print-products products))
+
+(defn good-product [{p :post-sale}]
+  (and (> p 0) (< p *max-price*)))
+
 (defn go []
   (when-let [new-products (set (map extract (products)))]
     (when-let [diff (set/difference new-products @last-products)]
       (when-not (empty? diff)
-        (print-products diff)
-        (println (apply str (repeat 30 "*")))
+        (let [good-deals (set/select good-product diff)]
+          (if-not (empty? good-deals)
+            (go-crazy good-deals)))
         (reset! last-products new-products)))))
 
 (defn schedule [f ms]
